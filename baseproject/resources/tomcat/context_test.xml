@@ -1,0 +1,20 @@
+<?xml version='1.0' encoding='utf-8'?>
+
+<Context>
+
+    <!-- Default set of monitored resources -->
+    <WatchedResource>WEB-INF/web.xml</WatchedResource>
+	<Resource 
+		name="jdbc/SampleV2-ds"
+		auth="Container" 
+		type="javax.sql.DataSource"
+        maxActive="100"
+		maxIdle="30"
+		maxWait="10000"
+        username="SampleV2"
+		password="SampleV2"
+		driverClassName="org.postgresql.Driver"
+		url="jdbc:postgresql://127.0.0.1:5432/SampleV2_test"
+		factory="org.apache.commons.dbcp.BasicDataSourceFactory"
+	/>
+</Context>

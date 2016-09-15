@@ -1,0 +1,144 @@
+package com.SampleV2.service.fixtures;
+
+import java.lang.reflect.Method;
+import java.net.URI;
+
+import javax.annotation.security.PermitAll;
+import javax.ws.rs.Consumes;
+import javax.ws.rs.DELETE;
+import javax.ws.rs.GET;
+import javax.ws.rs.POST;
+import javax.ws.rs.PUT;
+import javax.ws.rs.Path;
+import javax.ws.rs.PathParam;
+import javax.ws.rs.Produces;
+import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.Response;
+import javax.ws.rs.core.UriBuilder;
+
+import com.SampleV2.model.common.BaseEntity;
+import com.SampleV2.model.common.Repository;
+import com.SampleV2.service.common.BaseService;
+import com.SampleV2.util.utils.DatabaseUtils;
+import com.SampleV2.util.utils.JsonUtils;
+import com.SampleV2.util.utils.ReflectionUtils;
+import com.SampleV2.util.validation.ValidationException;
+
+@Path(FixtureService.PATH)
+public class FixtureService extends BaseService {
+	
+	public static final String PATH = "/fixtures";
+
+	@GET
+	@Path("/{tableName}/{id}")
+	@PermitAll
+	@Produces(MediaType.APPLICATION_JSON)
+	public Response fetch(@PathParam("tableName") String tableName, @PathParam("id") Long id) {
+		Class<?> clazz = getClassFromTable(tableName);
+		BaseEntity<?> obj;
+				
+		try {
+			Method m = clazz.getMethod("repository");
+			Repository<?> repository = (Repository<?>) m.invoke(null);
+			obj = repository.fetch(id);
+		} catch (Exception e) {
+			throw new RuntimeException(e);
+		}
+		
+		if (obj != null) {
+			return Response.status(200).entity(clazz.cast(obj)).build();
+		} else {
+			return Response.status(404).build();
+		}
+	}
+	 
+	@POST
+	@Path("/{tableName}")
+	@PermitAll
+	@Consumes(MediaType.TEXT_PLAIN)
+	@Produces(MediaType.APPLICATION_JSON)
+	public Response create(@PathParam("tableName") String tableName, String json) {
+		Class<?> clazz = getClassFromTable(tableName);
+		BaseEntity<?> obj = (BaseEntity<?>) JsonUtils.fromJson(json, clazz);
+				
+		try {
+			obj.prepareForPersist();
+			obj.save();
+		} catch (ValidationException e) {
+			return Response.status(422).entity(e.getValidationFailures()).build();
+		}
+		
+		Long id = obj.getId();
+		URI location = UriBuilder.fromPath(PATH + "/" + tableName + "/" + id).build();
+		return Response.status(201).location(location).build();
+	}
+	 
+	@SuppressWarnings("unchecked")
+	@PUT
+	@Path("/{tableName}/{id}")
+	@PermitAll
+	@Consumes(MediaType.TEXT_PLAIN)
+	@Produces(MediaType.APPLICATION_JSON)
+	public <T extends BaseEntity<T>> Response update(@PathParam("tableName") String tableName, @PathParam("id") Long id, String json) {
+		Class<T> clazz = (Class<T>) getClassFromTable(tableName);
+		T persistedEntity;
+		
+		try {
+			Method m = clazz.getMethod("repository");
+			Repository<T> repository = (Repository<T>) m.invoke(null);
+			persistedEntity = repository.fetch(id);
+		} catch (Exception e) {
+			throw new RuntimeException(e);
+		}
+		
+		if (persistedEntity == null) {
+			return Response.status(404).build();
+		}
+		
+		T entity = JsonUtils.fromJson(json, clazz);
+		
+		try {
+			entity.prepareForUpdate(persistedEntity);
+			entity.save();
+		} catch (ValidationException e) {
+			return Response.status(422).entity(e.getValidationFailures()).build();
+		}
+		
+		return Response.status(200).build();
+	}
+	 
+	@DELETE
+	@Path("/{tableName}/{id}")
+	@PermitAll
+	public Response delete(@PathParam("tableName") String tableName, @PathParam("id") Long id) {
+		Class<?> clazz = getClassFromTable(tableName);
+		BaseEntity<?> obj;
+		
+		try {
+			Method m = clazz.getMethod("repository");
+			Repository<?> repository = (Repository<?>) m.invoke(null);
+			obj = repository.fetch(id);
+		} catch (Exception e) {
+			throw new RuntimeException(e);
+		}
+		
+		if (obj != null) {
+			obj.remove();
+			return Response.status(200).build();
+		} else {
+			return Response.status(404).build();
+		}
+	}
+	 
+	@DELETE
+	@Path("/")
+	@PermitAll
+	public Response deleteAll() {
+		DatabaseUtils.cleanAllTables();
+		return Response.status(200).build();
+	}
+	
+	private Class<?> getClassFromTable(String tableName) {
+		return ReflectionUtils.getClassByTableName().get(tableName);
+	}
+}

@@ -1,0 +1,86 @@
+package com.SampleV2.model.entities;
+
+import java.util.List;
+
+import javax.persistence.CascadeType;
+import javax.persistence.Column;
+import javax.persistence.Entity;
+import javax.persistence.EnumType;
+import javax.persistence.Enumerated;
+import javax.persistence.FetchType;
+import javax.persistence.JoinColumn;
+import javax.persistence.JoinTable;
+import javax.persistence.ManyToMany;
+import javax.persistence.Transient;
+
+import com.SampleV2.model.common.BaseEntity;
+import com.SampleV2.model.common.Repository;
+import com.SampleV2.util.validation.NotNull;
+import com.SampleV2.util.validation.Unique;
+
+@Entity(name = "features")
+public class Feature extends BaseEntity<Feature> {
+	
+	@Transient
+	private static final transient Repository<Feature> REPOSITORY = new Repository<Feature>(Feature.class);
+
+	@NotNull
+	@Unique(key = "code")
+	@Enumerated(EnumType.STRING)
+	@Column(nullable = false, unique = true)
+	private FeatureCode code;
+
+	@NotNull
+	@Column(nullable = false)
+	private Boolean visible;
+	
+	@ManyToMany(cascade = CascadeType.REFRESH, fetch = FetchType.LAZY)
+	@JoinTable(name = "features_profiles", joinColumns = {
+		@JoinColumn(name = "feature_id", nullable = false, updatable = false)
+	}, inverseJoinColumns = {
+		@JoinColumn(name = "profile_id", nullable = false, updatable = false) 
+	})
+	private List<Profile> profiles;
+	
+	public Feature() {
+	}
+
+	public Feature(FeatureCode code, Boolean visible) {
+		super();
+		this.code = code;
+		this.visible = visible;
+	}
+
+	public static Repository<Feature> repository() {
+		return REPOSITORY;
+	}
+	
+	public FeatureCode getCode() {
+		return code;
+	}
+	
+	public void setCode(FeatureCode code) {
+		this.code = code;
+	}
+	
+	public Boolean getVisible() {
+		return visible;
+	}
+	
+	public void setVisible(Boolean visible) {
+		this.visible = visible;
+	}
+
+	public List<Profile> getProfiles() {
+		return profiles;
+	}
+	
+	public void setProfiles(List<Profile> profiles) {
+		this.profiles = profiles;
+	}
+
+	@Override
+	public Repository<Feature> getRepository() {
+		return REPOSITORY;
+	}
+}
